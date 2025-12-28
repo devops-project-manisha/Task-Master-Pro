@@ -37,7 +37,12 @@ pipeline {
             }
        }
 
-       
+       stage('Building Docker image'){
+          sh "docker build -t taskpro:latest ."
+
+       }
+
+
 
     }
 }
