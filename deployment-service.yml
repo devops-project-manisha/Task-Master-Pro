@@ -1,36 +1,35 @@
 apiVersion: apps/v1
-kind: Deployment # Kubernetes resource kind we are creating
+kind: Deployment
 metadata:
-  name: taskmaster-deployment
+  name: taskpro-deployment
+  labels:
+    app: taskpro
 spec:
+  replicas: 2
   selector:
     matchLabels:
-      app: taskmaster
-  replicas: 2 # Number of replicas that will be created for this deployment
+      app: taskpro
   template:
     metadata:
       labels:
-        app: taskmaster
+        app: taskpro
     spec:
       containers:
-        - name: taskmaster
-          image: adijaiswal/prodtaskmaster:latest # Image that will be used to containers in the cluster
-          imagePullPolicy: Always
+        - name: taskpro
+          image: devopsproject1.azurecr.io/taskpro:latest
           ports:
-            - containerPort: 8080 # The port that the container is running on in the cluster
-
-
+            - containerPort: 8080
 ---
-
-apiVersion: v1 # Kubernetes API version
-kind: Service # Kubernetes resource kind we are creating
-metadata: # Metadata of the resource kind we are creating
-  name: taskmaster-ssvc
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskpro-service
+  labels:
+    app: taskpro
 spec:
-  selector:
-    app: taskmaster
+  type: LoadBalancer
   ports:
-    - protocol: "TCP"
-      port: 80
-      targetPort: 8080 
-  type: LoadBalancer # type of the service.
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: taskpro
