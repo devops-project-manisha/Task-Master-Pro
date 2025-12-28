@@ -74,9 +74,7 @@ pipeline {
 
         stage('Deploy the docker image to QA server') {
             when {
-                expression {
-                    params.ENV == 'QA'
-                }
+                expression { params.ENV == 'QA' }
             }
             steps {
                 withCredentials([usernamePassword(
@@ -86,12 +84,24 @@ pipeline {
                 )]) {
                     sh '''
                     ssh jenkins@4.222.234.133 \
-                    ansible-playbook /home/jenkins/Myansible/masterpro.yml \
+                    ansible-playbook /home/jenkins/Myansible/taskpro.yml \
                     -e acr_username=$ACR_USER \
                     -e acr_password=$ACR_PASS \
                     -b
                     '''
                 }
+            }
+        }
+
+        stage('Deploy to k8s cluster') {
+            when {
+                expression { params.ENV == 'Prod' }
+            }
+            steps {
+                input message: 'Do you approve deployment to Production?', ok: 'Deploy'
+                sh '''
+                kubectl apply -f deployment-service.yml
+                '''
             }
         }
     }
