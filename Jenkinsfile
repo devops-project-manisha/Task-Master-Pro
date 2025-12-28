@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENV', choices: ['Dev', 'QA', 'Prod'], description: 'Select Environment')
+    }
+
     environment {
         SCANNER_HOME = tool 'SonarScanner'
         ACR_LOGIN_SERVER = 'devopsproject1.azurecr.io'
@@ -9,6 +13,7 @@ pipeline {
     }
 
     stages {
+
         stage('Git Checkout') {
             steps {
                 checkout scm
@@ -17,7 +22,6 @@ pipeline {
 
         stage('Build the code') {
             steps {
-                // Tumchya pom.xml madhye Java 11 ahe, mhanun ithe Maven build suru hoil
                 sh 'mvn clean package -DskipTests'
             }
         }
@@ -41,9 +45,8 @@ pipeline {
             }
         }
 
-        stage('Building Docker image'){
+        stage('Building Docker image') {
             steps {
-                // Image build kartaana tag ithech dila tar bare padte
                 sh "docker build -t ${IMAGE_NAME}:${TAG} ."
             }
         }
@@ -66,6 +69,29 @@ pipeline {
                 docker tag ${IMAGE_NAME}:${TAG} ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${TAG}
                 docker push ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${TAG}
                 """
+            }
+        }
+
+        stage('Deploy the docker image to QA server') {
+            when {
+                expression {
+                    params.ENV == 'QA'
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'acr-creds',
+                    usernameVariable: 'ACR_USER',
+                    passwordVariable: 'ACR_PASS'
+                )]) {
+                    sh '''
+                    ssh jenkins@4.222.234.133 \
+                    ansible-playbook /home/jenkins/Myansible/masterpro.yml \
+                    -e acr_username=$ACR_USER \
+                    -e acr_password=$ACR_PASS \
+                    -b
+                    '''
+                }
             }
         }
     }
