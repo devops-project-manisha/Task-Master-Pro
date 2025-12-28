@@ -1,6 +1,13 @@
 pipeline {
     agent any
 
+    environment {
+        SCANNER_HOME = tool 'SonarScanner'
+        ACR_LOGIN_SERVER = 'devopsproject1.azurecr.io'
+        IMAGE_NAME = 'taskpro'
+        TAG = 'latest'
+    }
+
     stages {
 
         stage('Git Checkout') {
@@ -59,6 +66,17 @@ pipeline {
           }
          }
 
+         stage('Tag name') {
+            steps {
+                sh '''
+                  docker tag ${IMAGE_NAME}:$ {TAG} \
+                  $ACR_LOGIN_SERVER/${IMAGE_NAME}: ${TAG}
+                '''
+            }
+         }
+         
+
+         
 
 
     }
