@@ -9,7 +9,6 @@ pipeline {
     }
 
     stages {
-
         stage('Git Checkout') {
             steps {
                 checkout scm
@@ -18,14 +17,12 @@ pipeline {
 
         stage('Build the code') {
             steps {
+                // Tumchya pom.xml madhye Java 11 ahe, mhanun ithe Maven build suru hoil
                 sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('SonarQube Analysis') {
-            environment {
-                SCANNER_HOME = tool 'SonarScanner'
-            }
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh """
@@ -38,46 +35,38 @@ pipeline {
         }
 
         stage('OWASP Dependency-Check') {
-          steps {
-           dependencyCheck additionalArguments: '--scan pom.xml', odcInstallation: 'Dependency-Check'
-              dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            steps {
+                dependencyCheck additionalArguments: '--scan pom.xml', odcInstallation: 'Dependency-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
-       }
-
-       stage('Building Docker image'){
-        steps{
-          sh "docker build -t taskpro:latest ."
         }
 
-       }
-
-       stage('Login to ACR') {
-       steps {
-         withCredentials([usernamePassword(
-             credentialsId: 'acr-creds',
-             usernameVariable: 'ACR_USER',
-             passwordVariable: 'ACR_PASS'
-         )]) {
-             sh '''
-               echo $ACR_PASS | docker login $ACR_LOGIN_SERVER \
-               -u $ACR_USER --password-stdin
-             '''
-           }
-          }
-         }
-
-         stage('Tag name') {
+        stage('Building Docker image'){
             steps {
-                sh '''
-                  docker tag ${IMAGE_NAME}:$ {TAG} \
-                  $ACR_LOGIN_SERVER/${IMAGE_NAME}: ${TAG}
-                '''
+                // Image build kartaana tag ithech dila tar bare padte
+                sh "docker build -t ${IMAGE_NAME}:${TAG} ."
             }
-         }
-         
+        }
 
-         
+        stage('Login to ACR') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'acr-creds',
+                    usernameVariable: 'ACR_USER',
+                    passwordVariable: 'ACR_PASS'
+                )]) {
+                    sh "echo ${ACR_PASS} | docker login ${ACR_LOGIN_SERVER} -u ${ACR_USER} --password-stdin"
+                }
+            }
+        }
 
-
+        stage('Tag and Push to ACR') {
+            steps {
+                sh """
+                docker tag ${IMAGE_NAME}:${TAG} ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${TAG}
+                docker push ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${TAG}
+                """
+            }
+        }
     }
 }
